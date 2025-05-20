@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    <title>{% block title %}{% endblock %}</title>
+    {% csrf_token %}
+</head>
+
+<body>
+    {% include "./includes/header.html" %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% bootstrap_javascript %}
+    
+    <script>
+        // Check if Bootstrap is available
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap JavaScript is not loaded properly!');
+            } else {
+                console.log('Bootstrap version:', bootstrap.Tooltip.VERSION);
+            }
+        });
+    </script>
+</body>
+
+</html>

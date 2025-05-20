@@ -1,0 +1,47 @@
+services:
+
+  postgres:
+    container_name: dbcloud_storage
+    image: postgres:16.0-alpine
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data/
+    ports:
+      - 5433:5432
+    env_file:
+      - ./cloud_storage/.env
+
+  redis:
+    container_name: redis
+    image: redis:7.4.2-alpine
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass \"$REDIS_PASSWORD\"" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        redis-server /usr/local/etc/redis/redis.conf
+      '
+    volumes:
+      - redis_data:/data
+    ports:
+      - 6380:6379
+    env_file: 
+      - /cloud_storage/.env
+
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_volume:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+    env_file:
+      - ./cloud_storage/.env
+
+volumes:
+  postgres_volume:
+  minio_volume:
+  redis_data:

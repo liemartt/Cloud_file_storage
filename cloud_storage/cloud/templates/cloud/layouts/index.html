@@ -1,0 +1,191 @@
+{% extends '../base.html' %}
+
+{% load static %}
+
+{% block content %}
+<main>
+    <div class="container">
+        <div class="row mt-2">
+            <div class="col-12 col-md-2 mb-3">
+                <h3>Действия</h3>
+                <button class="btn btn-primary w-100 mb-2" id="create-folder-button">
+                    Создать папку
+                </button>
+                <button class="btn btn-primary w-100 mb-2" id="create-file-button">
+                    Создать файл
+                </button>
+                <h3>Загрузка</h3>
+                <button class="btn btn-primary w-100 mb-2" id="upload-folder-btn">📂 Загрузить папку
+                    <input class="btn btn-primary w-100 mb-2" type="file" id="many-file-picker" name="fileList" webkitdirectory multiple hidden />
+                </button>
+                <button class="btn btn-primary w-100 mb-2" id="upload-file-btn">📄 Загрузить файл
+                    <input class="btn btn-primary w-100 mb-2" type="file" id="one-file-picker" name="file" hidden />
+                </button>
+                <h3>Навигация</h3>
+                <a href="{% url 'cloud:shared_files' %}" class="btn btn-primary w-100 mb-2">
+                    Доступные мне файлы
+                </a>
+            </div>
+
+            <div class="col-12 col-md-10">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                        {% for fullpath, name_folder in breadcrumb %}
+                            {% if forloop.last %}
+                            <li class="breadcrumb-item active" aria-current="page">
+                                {{ name_folder|truncatechars:10 }}
+                            </li>
+                            {% else %}
+                            <li class="breadcrumb-item">
+                                <a href="/?path={{ fullpath|urlencode:"" }}">
+                                    {{ name_folder|truncatechars:10 }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ol>
+                </nav>
+
+                <section id="files" class="section">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col"></th>
+                                    <th scope="col">Название</th>
+                                    <th scope="col">Дата изменения</th>
+                                    <th scope="col">Размер</th>
+                                    <th scope="col"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for obj in page_obj %}
+                                {% if obj.is_dir %}
+                                <tr style="cursor: pointer;">
+                                    <td onclick="document.location = '?path={{ current_path }}/{{ obj.object_name }}';">
+                                        <img src="{% static 'cloud/icons/' %}folder.png" height="25px">
+                                    </td>
+                                    <td onclick="document.location = '?path={{ current_path }}/{{ obj.object_name }}';">{{ obj.object_name|truncatechars:10 }}</td>
+                                    <td onclick="document.location = '?path={{ current_path }}/{{ obj.object_name }}';">{{ obj.last_modified|default:"-" }}</td>
+                                    <td onclick="document.location = '?path={{ current_path }}/{{ obj.object_name }}';">{{ obj.size|default:"-" }}</td>
+                                    <td>
+                                        <button class="btn btn-secondary" data-bs-toggle="popover"
+                                            title="Действия с объектом"
+                                            data-bs-content='
+                                                <button class="btn btn-primary btn-sm w-100 mb-2 download-btn" data-object-name="{{ obj.object_name }}">Скачать</button>
+                                                <button class="btn btn-info btn-sm w-100 mb-2 share-btn" data-object-name="{{ obj.object_name }}">Поделиться</button>
+                                                <button class="btn btn-warning btn-sm w-100 mb-2 rename-btn" data-object-name="{{ obj.object_name }}">Переименовать</button>
+                                                <button class="btn btn-danger btn-sm w-100 delete-btn" data-object-name="{{ obj.object_name }}">Удалить</button>'>⋮</button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td>
+                                        <img src="{% static 'cloud/icons/' %}file.png" height="25px">
+                                    </td>
+                                    <td>{{ obj.object_name|truncatechars:10 }}</td>
+                                    <td>{{ obj.last_modified|date:"d M Y H:i"|default:"-" }}</td>
+                                    <td>{{ obj.size|filesizeformat|default:"-" }}</td>
+                                    <td>
+                                        <button class="btn btn-secondary" data-bs-toggle="popover"
+                                            title="Действия с объектом"
+                                            data-bs-content='
+                                                <button class="btn btn-primary btn-sm w-100 mb-2 download-btn" data-object-name="{{ obj.object_name }}">Скачать</button>
+                                                <button class="btn btn-info btn-sm w-100 mb-2 share-btn" data-object-name="{{ obj.object_name }}">Поделиться</button>
+                                                <button class="btn btn-warning btn-sm w-100 mb-2 rename-btn" data-object-name="{{ obj.object_name }}">Переименовать</button>
+                                                <button class="btn btn-danger btn-sm w-100 delete-btn" data-object-name="{{ obj.object_name }}">Удалить</button>'>⋮</button>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        {% include "cloud/includes/pagination.html" %}
+    </div>
+</main>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="shareModalLabel">Поделиться файлом</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="shareForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="shareUsername" class="form-label">Имя пользователя</label>
+                        <input type="text" class="form-control" id="shareUsername" placeholder="Введите имя пользователя">
+                        <div id="shareError" class="text-danger mt-2" style="display: none;"></div>
+                        <div id="shareSuccess" class="text-success mt-2" style="display: none;">Файл успешно отправлен!</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="shareSubmitBtn">Поделиться</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Debug button for testing -->
+<button id="debugBtn" class="btn btn-danger position-fixed bottom-0 end-0 m-3">Test Share Modal</button>
+
+<script>
+    // Simple debug script to check if JavaScript is working
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Debug script loaded');
+        
+        // Add a direct click handler to test the modal
+        document.getElementById('debugBtn').addEventListener('click', function() {
+            console.log('Debug button clicked');
+            
+            // Check if Bootstrap is available
+            if (typeof bootstrap !== 'undefined') {
+                console.log('Bootstrap is available');
+                try {
+                    const shareModal = new bootstrap.Modal(document.getElementById('shareModal'));
+                    shareModal.show();
+                    console.log('Modal should be visible now');
+                } catch (error) {
+                    console.error('Error showing modal:', error);
+                }
+            } else {
+                console.error('Bootstrap is not available!');
+                alert('Bootstrap is not available. Check console for details.');
+            }
+        });
+        
+        // Add direct click handlers to all share buttons
+        const shareButtons = document.querySelectorAll('.share-btn');
+        console.log('Found ' + shareButtons.length + ' share buttons');
+        
+        shareButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                console.log('Share button clicked directly:', this.dataset.objectName);
+                
+                if (typeof bootstrap !== 'undefined') {
+                    const shareModal = new bootstrap.Modal(document.getElementById('shareModal'));
+                    document.getElementById('shareSubmitBtn').dataset.objectName = this.dataset.objectName;
+                    shareModal.show();
+                } else {
+                    console.error('Bootstrap is not available for direct handler!');
+                }
+            });
+        });
+    });
+</script>
+
+<script type="module" src="{% static 'cloud/js/register_handlers.js' %}"></script>
+<script type="module" src="{% static 'cloud/js/object_actions.js' %}"></script>
+{% endblock %}
